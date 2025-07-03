@@ -212,14 +212,25 @@ body::after {
     align-items: center;
     min-height: 100vh;
     width: 100vw;
+    box-sizing: border-box;
 }
 
 .logo {
-    max-width: min(30vw, 300px);
-    min-width: 250px;
+    max-width: min(30vw, 200px);
+    min-width: 80px;
     width: 100%;
     height: auto;
     object-fit: contain;
+    display: block;
+    margin: 0 auto;
+}
+
+@media (max-width: 600px) {
+    .main-content {
+        justify-content: flex-start;
+        padding-top: 4vh;
+        min-height: 0;
+    }
 }
 
 .container {
