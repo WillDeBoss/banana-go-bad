@@ -78,17 +78,18 @@ class BananaTimer {
     }
     
     updateBananaColor(percentage) {
-        // Calculate which stage to show (1-10)
+        // Calculate which stage to show (1-11)
         let stage = 1;
-        if (percentage >= 11.11) stage = 2;
-        if (percentage >= 22.22) stage = 3;
-        if (percentage >= 33.33) stage = 4;
-        if (percentage >= 44.44) stage = 5;
-        if (percentage >= 55.55) stage = 6;
-        if (percentage >= 66.66) stage = 7;
-        if (percentage >= 77.77) stage = 8;
-        if (percentage >= 88.88) stage = 9;
-        if (percentage >= 100) stage = 10;
+        if (percentage >= 9.09) stage = 2;
+        if (percentage >= 18.18) stage = 3;
+        if (percentage >= 27.27) stage = 4;
+        if (percentage >= 36.36) stage = 5;
+        if (percentage >= 45.45) stage = 6;
+        if (percentage >= 54.54) stage = 7;
+        if (percentage >= 63.63) stage = 8;
+        if (percentage >= 72.72) stage = 9;
+        if (percentage >= 81.81) stage = 10;
+        if (percentage >= 90.90) stage = 11;
         // Hide all images
         const images = this.banana.querySelectorAll('.banana-image');
         images.forEach(img => img.classList.remove('active'));
