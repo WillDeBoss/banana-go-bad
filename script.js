@@ -83,21 +83,35 @@ class BananaTimer {
 
     loadFromCookies() {
         console.log('Loading from cookies...'); // Debug log
+        console.log('All cookies:', document.cookie); // Debug log
+        
         const cookies = document.cookie.split(';');
         this.loadedFromCookies = false;
         
         for (let cookie of cookies) {
             const [name, value] = cookie.trim().split('=');
+            console.log('Checking cookie:', name, '=', value); // Debug log
+            
             if (name === 'bananaTimer') {
                 try {
-                    const data = JSON.parse(value);
-                    console.log('Loaded cookie data:', data); // Debug log
+                    const decodedValue = decodeURIComponent(value);
+                    console.log('Decoded cookie value:', decodedValue); // Debug log
+                    
+                    const data = JSON.parse(decodedValue);
+                    console.log('Parsed cookie data:', data); // Debug log
                     
                     this.timeLeft = data.timeLeft || 10;
                     this.isRunning = data.isRunning || false;
                     this.currentStage = data.currentStage || 1;
                     this.startTime = data.startTime || null;
                     this.loadedFromCookies = true;
+                    
+                    console.log('Loaded state:', {
+                        timeLeft: this.timeLeft,
+                        isRunning: this.isRunning,
+                        currentStage: this.currentStage,
+                        startTime: this.startTime
+                    }); // Debug log
                     
                     // If timer was running, calculate elapsed time and continue
                     if (this.isRunning && this.startTime) {
@@ -124,9 +138,11 @@ class BananaTimer {
                     this.showBananaStage(this.currentStage);
                     this.updateThumbnailSelection();
                     
+                    console.log('Cookie loading complete'); // Debug log
                     break;
                 } catch (e) {
                     console.error('Error parsing cookie data:', e);
+                    console.error('Raw cookie value:', value);
                 }
             }
         }
