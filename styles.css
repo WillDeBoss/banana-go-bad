@@ -215,21 +215,25 @@ body::after {
     box-sizing: border-box;
 }
 
+/* Start of Selection */
 .logo {
-    max-width: min(30vw, 200px);
-    min-width: 80px;
+    max-width: min(30vw, 300px);
+    min-width: 200px;
     width: 100%;
     height: auto;
     object-fit: contain;
     display: block;
     margin: 0 auto;
+    margin-top: -5vh;
 }
+/* End of Selection */
 
 @media (max-width: 600px) {
     .main-content {
         justify-content: flex-start;
-        padding-top: 4vh;
         min-height: 0;
+        padding-top: 12vh;
+        padding-bottom: 6vh;
     }
 }
 
