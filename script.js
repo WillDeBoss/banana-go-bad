@@ -13,8 +13,8 @@ class BananaTimer {
         this.holdTimer = null;
         this.isHolding = false;
         
+        this.loadFromCookies(); // Load first before init
         this.init();
-        this.loadFromCookies();
     }
     
     init() {
@@ -41,7 +41,11 @@ class BananaTimer {
                 this.setStage(stage);
             });
         });
-        this.setStage(1);
+        
+        // Only set stage to 1 if we didn't load from cookies
+        if (!this.loadedFromCookies) {
+            this.setStage(1);
+        }
     }
 
     startHold() {
@@ -74,43 +78,87 @@ class BananaTimer {
             startTime: this.startTime
         };
         document.cookie = `bananaTimer=${JSON.stringify(data)}; expires=Fri, 31 Dec 9999 23:59:59 GMT; path=/`;
+        console.log('Saved to cookies:', data); // Debug log
     }
 
     loadFromCookies() {
+        console.log('Loading from cookies...'); // Debug log
         const cookies = document.cookie.split(';');
+        this.loadedFromCookies = false;
+        
         for (let cookie of cookies) {
             const [name, value] = cookie.trim().split('=');
             if (name === 'bananaTimer') {
                 try {
                     const data = JSON.parse(value);
+                    console.log('Loaded cookie data:', data); // Debug log
+                    
                     this.timeLeft = data.timeLeft || 10;
                     this.isRunning = data.isRunning || false;
                     this.currentStage = data.currentStage || 1;
                     this.startTime = data.startTime || null;
+                    this.loadedFromCookies = true;
                     
                     // If timer was running, calculate elapsed time and continue
                     if (this.isRunning && this.startTime) {
                         const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+                        console.log('Elapsed time:', elapsed, 'seconds'); // Debug log
                         this.timeLeft = Math.max(0, this.timeLeft - elapsed);
                         
                         if (this.timeLeft <= 0) {
+                            console.log('Timer expired while away'); // Debug log
                             this.timeLeft = 0;
                             this.isRunning = false;
                             this.startTime = null;
+                            // Update to final stage
+                            this.currentStage = 11;
                         } else {
-                            // Continue the timer
-                            this.startTimer();
+                            console.log('Continuing timer with', this.timeLeft, 'seconds left'); // Debug log
+                            // Continue the timer - don't call startTimer() as it resets startTime
+                            this.continueTimer();
                         }
                     }
                     
+                    // Update display
                     this.timer.textContent = this.timeLeft;
-                    this.setStage(this.currentStage);
+                    this.showBananaStage(this.currentStage);
+                    this.updateThumbnailSelection();
+                    
                     break;
                 } catch (e) {
                     console.error('Error parsing cookie data:', e);
                 }
             }
         }
+        
+        if (!this.loadedFromCookies) {
+            console.log('No valid cookie data found, starting fresh'); // Debug log
+        }
+    }
+
+    continueTimer() {
+        // Continue an existing timer without resetting startTime
+        if (this.isRunning && this.timeLeft > 0) {
+            // Add fade-away effect to everything except banana
+            document.body.classList.add('banana-only-mode');
+            
+            this.interval = setInterval(() => {
+                this.timeLeft--;
+                this.timer.textContent = this.timeLeft;
+                this.updateBananaColor(this.getBrowningPercentage());
+                this.saveToCookies();
+                if (this.timeLeft <= 0) {
+                    this.stopTimer();
+                }
+            }, 1000);
+        }
+    }
+
+    updateThumbnailSelection() {
+        // Update thumbnail selection based on current stage
+        this.thumbs.forEach(thumb => thumb.classList.remove('selected'));
+        const selectedThumb = document.querySelector('.banana-thumb[data-stage="' + this.currentStage + '"]');
+        if (selectedThumb) selectedThumb.classList.add('selected');
     }
 
     setStage(stage) {
@@ -124,9 +172,8 @@ class BananaTimer {
         this.showBananaStage(stage);
         
         // Highlight selected thumb
-        this.thumbs.forEach(thumb => thumb.classList.remove('selected'));
-        const selectedThumb = document.querySelector('.banana-thumb[data-stage="' + stage + '"]');
-        if (selectedThumb) selectedThumb.classList.add('selected');
+        this.updateThumbnailSelection();
+        
         // If timer is running, reset interval and continue
         if (this.isRunning) {
             clearInterval(this.interval);
@@ -184,6 +231,10 @@ class BananaTimer {
         if (percentage >= 72.72) stage = 9;
         if (percentage >= 81.81) stage = 10;
         if (percentage >= 90.90) stage = 11;
+        
+        // Update current stage
+        this.currentStage = stage;
+        
         // Hide all images
         const images = this.banana.querySelectorAll('.banana-image');
         images.forEach(img => img.classList.remove('active'));
@@ -193,9 +244,7 @@ class BananaTimer {
             activeImage.classList.add('active');
         }
         // Also update selector highlight
-        this.thumbs.forEach(thumb => thumb.classList.remove('selected'));
-        const selectedThumb = document.querySelector('.banana-thumb[data-stage="' + stage + '"]');
-        if (selectedThumb) selectedThumb.classList.add('selected');
+        this.updateThumbnailSelection();
     }
     
     stopTimer() {
@@ -207,8 +256,6 @@ class BananaTimer {
         document.body.classList.remove('banana-only-mode');
         this.saveToCookies();
     }
-    
-
 }
 
 // Initialize the app when the page loads
