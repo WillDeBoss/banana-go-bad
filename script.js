@@ -9,12 +9,32 @@ class BananaTimer {
         this.isRunning = false;
         this.interval = null;
         this.currentStage = 1;
+        this.startTime = null;
+        this.holdTimer = null;
+        this.isHolding = false;
         
         this.init();
+        this.loadFromCookies();
     }
     
     init() {
         this.banana.addEventListener('click', () => this.startTimer());
+        
+        // Add click and hold functionality for reset
+        this.banana.addEventListener('mousedown', () => this.startHold());
+        this.banana.addEventListener('mouseup', () => this.stopHold());
+        this.banana.addEventListener('mouseleave', () => this.stopHold());
+        
+        // Touch events for mobile
+        this.banana.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            this.startHold();
+        });
+        this.banana.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            this.stopHold();
+        });
+        
         this.thumbs.forEach(thumb => {
             thumb.addEventListener('click', (e) => {
                 const stage = parseInt(thumb.getAttribute('data-stage'));
@@ -22,6 +42,75 @@ class BananaTimer {
             });
         });
         this.setStage(1);
+    }
+
+    startHold() {
+        if (!this.isRunning) return; // Only allow reset when timer is running
+        this.isHolding = true;
+        this.holdTimer = setTimeout(() => {
+            this.resetToSelection();
+        }, 5000); // 5 seconds
+    }
+
+    stopHold() {
+        this.isHolding = false;
+        if (this.holdTimer) {
+            clearTimeout(this.holdTimer);
+            this.holdTimer = null;
+        }
+    }
+
+    resetToSelection() {
+        this.stopTimer();
+        this.setStage(1); // Reset to first stage
+        this.saveToCookies();
+    }
+
+    saveToCookies() {
+        const data = {
+            timeLeft: this.timeLeft,
+            isRunning: this.isRunning,
+            currentStage: this.currentStage,
+            startTime: this.startTime
+        };
+        document.cookie = `bananaTimer=${JSON.stringify(data)}; expires=Fri, 31 Dec 9999 23:59:59 GMT; path=/`;
+    }
+
+    loadFromCookies() {
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'bananaTimer') {
+                try {
+                    const data = JSON.parse(value);
+                    this.timeLeft = data.timeLeft || 10;
+                    this.isRunning = data.isRunning || false;
+                    this.currentStage = data.currentStage || 1;
+                    this.startTime = data.startTime || null;
+                    
+                    // If timer was running, calculate elapsed time and continue
+                    if (this.isRunning && this.startTime) {
+                        const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+                        this.timeLeft = Math.max(0, this.timeLeft - elapsed);
+                        
+                        if (this.timeLeft <= 0) {
+                            this.timeLeft = 0;
+                            this.isRunning = false;
+                            this.startTime = null;
+                        } else {
+                            // Continue the timer
+                            this.startTimer();
+                        }
+                    }
+                    
+                    this.timer.textContent = this.timeLeft;
+                    this.setStage(this.currentStage);
+                    break;
+                } catch (e) {
+                    console.error('Error parsing cookie data:', e);
+                }
+            }
+        }
     }
 
     setStage(stage) {
@@ -43,6 +132,7 @@ class BananaTimer {
             clearInterval(this.interval);
             this.startTimer();
         }
+        this.saveToCookies();
     }
 
     getBrowningPercentage() {
@@ -63,6 +153,7 @@ class BananaTimer {
     startTimer() {
         if (this.isRunning) return;
         this.isRunning = true;
+        this.startTime = Date.now();
         
         // Add fade-away effect to everything except banana
         document.body.classList.add('banana-only-mode');
@@ -71,10 +162,13 @@ class BananaTimer {
             this.timeLeft--;
             this.timer.textContent = this.timeLeft;
             this.updateBananaColor(this.getBrowningPercentage());
+            this.saveToCookies();
             if (this.timeLeft <= 0) {
                 this.stopTimer();
             }
         }, 1000);
+        
+        this.saveToCookies();
     }
     
     updateBananaColor(percentage) {
@@ -107,9 +201,11 @@ class BananaTimer {
     stopTimer() {
         clearInterval(this.interval);
         this.isRunning = false;
+        this.startTime = null;
         
         // Remove the banana-only-mode class to show all elements again
         document.body.classList.remove('banana-only-mode');
+        this.saveToCookies();
     }
     
 
