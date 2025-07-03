@@ -5,7 +5,7 @@ class BananaTimer {
         this.selector = document.querySelector('.banana-selector');
         this.thumbs = document.querySelectorAll('.banana-thumb');
         
-        this.timeLeft = 10;
+        this.timeLeft = 950400; // 11 days in seconds (11 * 24 * 60 * 60)
         this.isRunning = false;
         this.interval = null;
         this.currentStage = 1;
@@ -100,7 +100,7 @@ class BananaTimer {
                     const data = JSON.parse(decodedValue);
                     console.log('Parsed cookie data:', data); // Debug log
                     
-                    this.timeLeft = data.timeLeft || 10;
+                    this.timeLeft = data.timeLeft || 950400;
                     this.isRunning = data.isRunning || false;
                     this.currentStage = data.currentStage || 1;
                     this.startTime = data.startTime || null;
@@ -134,7 +134,7 @@ class BananaTimer {
                     }
                     
                     // Update display
-                    this.timer.textContent = this.timeLeft;
+                    this.updateTimerDisplay();
                     this.showBananaStage(this.currentStage);
                     this.updateThumbnailSelection();
                     
@@ -160,13 +160,27 @@ class BananaTimer {
             
             this.interval = setInterval(() => {
                 this.timeLeft--;
-                this.timer.textContent = this.timeLeft;
+                this.updateTimerDisplay();
                 this.updateBananaColor(this.getBrowningPercentage());
                 this.saveToCookies();
                 if (this.timeLeft <= 0) {
                     this.stopTimer();
                 }
             }, 1000);
+        }
+    }
+
+    updateTimerDisplay() {
+        const days = Math.floor(this.timeLeft / (24 * 60 * 60));
+        const hours = Math.floor((this.timeLeft % (24 * 60 * 60)) / (60 * 60));
+        const minutes = Math.floor((this.timeLeft % (60 * 60)) / 60);
+        
+        if (days > 0) {
+            this.timer.textContent = `${days}d ${hours}h`;
+        } else if (hours > 0) {
+            this.timer.textContent = `${hours}h ${minutes}m`;
+        } else {
+            this.timer.textContent = `${minutes}m`;
         }
     }
 
@@ -179,10 +193,11 @@ class BananaTimer {
 
     setStage(stage) {
         this.currentStage = stage;
-        // Set timer based on stage (distribute 1-10 evenly over 10s)
-        // Stage 1 = 10s, Stage 10 = 0s
-        this.timeLeft = 10 - Math.round((stage - 1) * (10 / 9));
-        this.timer.textContent = this.timeLeft;
+        // Set timer based on stage - each stage represents 1 day less
+        // Stage 1 = 11 days, Stage 2 = 10 days, ..., Stage 11 = 0 days
+        const daysLeft = 11 - stage;
+        this.timeLeft = daysLeft * 24 * 60 * 60; // Convert days to seconds
+        this.updateTimerDisplay();
         
         // Directly show the selected stage instead of calculating from percentage
         this.showBananaStage(stage);
@@ -199,7 +214,8 @@ class BananaTimer {
     }
 
     getBrowningPercentage() {
-        return Math.floor(((10 - this.timeLeft) / 10) * 100);
+        // Calculate percentage based on 11 days total
+        return Math.floor(((950400 - this.timeLeft) / 950400) * 100);
     }
     
     showBananaStage(stage) {
@@ -223,7 +239,7 @@ class BananaTimer {
         
         this.interval = setInterval(() => {
             this.timeLeft--;
-            this.timer.textContent = this.timeLeft;
+            this.updateTimerDisplay();
             this.updateBananaColor(this.getBrowningPercentage());
             this.saveToCookies();
             if (this.timeLeft <= 0) {
@@ -235,7 +251,8 @@ class BananaTimer {
     }
     
     updateBananaColor(percentage) {
-        // Calculate which stage to show (1-11)
+        // Calculate which stage to show (1-11) based on days elapsed
+        // Each stage represents approximately 9.09% of the total time (100% / 11 stages)
         let stage = 1;
         if (percentage >= 9.09) stage = 2;
         if (percentage >= 18.18) stage = 3;
