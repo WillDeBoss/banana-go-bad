@@ -25,18 +25,42 @@ class BananaTimer {
         this.banana.addEventListener('mouseup', () => this.stopHold());
         this.banana.addEventListener('mouseleave', () => this.stopHold());
         
-        // Touch events for mobile
+        // Touch events for mobile - handle both tap and hold
+        let touchStartTime = 0;
+        
         this.banana.addEventListener('touchstart', (e) => {
             e.preventDefault();
+            touchStartTime = Date.now();
             this.startHold();
         });
+        
         this.banana.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            const touchDuration = Date.now() - touchStartTime;
+            
+            this.stopHold();
+            
+            // If touch was less than 500ms, treat it as a tap to start timer
+            if (touchDuration < 500) {
+                this.startTimer();
+            }
+        });
+        
+        // Handle touch cancel (when user drags finger away)
+        this.banana.addEventListener('touchcancel', (e) => {
             e.preventDefault();
             this.stopHold();
         });
         
         this.thumbs.forEach(thumb => {
             thumb.addEventListener('click', (e) => {
+                const stage = parseInt(thumb.getAttribute('data-stage'));
+                this.setStage(stage);
+            });
+            
+            // Add touch support for thumbnails too
+            thumb.addEventListener('touchend', (e) => {
+                e.preventDefault();
                 const stage = parseInt(thumb.getAttribute('data-stage'));
                 this.setStage(stage);
             });
