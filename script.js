@@ -12,13 +12,21 @@ class BananaTimer {
         this.startTime = null;
         this.holdTimer = null;
         this.isHolding = false;
+        this.justReset = false; // Flag to prevent immediate click after reset
         
         this.loadFromCookies(); // Load first before init
         this.init();
     }
     
     init() {
-        this.banana.addEventListener('click', () => this.startTimer());
+        this.banana.addEventListener('click', () => {
+            // Prevent click if we just completed a reset
+            if (this.justReset) {
+                this.justReset = false;
+                return;
+            }
+            this.startTimer();
+        });
         
         // Add click and hold functionality for reset
         this.banana.addEventListener('mousedown', () => this.startHold());
@@ -92,6 +100,7 @@ class BananaTimer {
         this.stopTimer();
         this.setStage(1); // Reset to first stage
         this.saveToCookies();
+        this.justReset = true; // Set flag to prevent immediate click
     }
 
     saveToCookies() {
