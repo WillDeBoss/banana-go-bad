@@ -88,7 +88,7 @@ class BananaTimer {
         this.holdStartTime = Date.now(); // Record when hold started
         this.holdTimer = setTimeout(() => {
             this.resetToSelection();
-        }, 5000); // 5 seconds
+        }, 1000); // 1 second
     }
 
     stopHold() {
