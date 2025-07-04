@@ -9,10 +9,14 @@ class BananaTimer {
         this.isRunning = false;
         this.interval = null;
         this.currentStage = 1;
+        this.startingStage = 1; // Track the stage the user originally selected
         this.startTime = null;
         this.holdTimer = null;
         this.isHolding = false;
         this.holdStartTime = null; // Track when hold started
+        
+        // Debug mode - set to true to speed up timer for testing (1 second = 1 hour, so 24 seconds = 1 day)
+        this.debugMode = false; // Set to true to test quickly
         
         this.loadFromCookies(); // Load first before init
         this.init();
@@ -129,7 +133,7 @@ class BananaTimer {
 
     resetToSelection() {
         this.stopTimer();
-        this.setStage(1); // Reset to first stage
+        this.setStage(1); // Reset to first stage (this will also set startingStage = 1)
         this.saveToCookies();
     }
 
@@ -138,6 +142,7 @@ class BananaTimer {
             timeLeft: this.timeLeft,
             isRunning: this.isRunning,
             currentStage: this.currentStage,
+            startingStage: this.startingStage,
             startTime: this.startTime
         };
         document.cookie = `bananaTimer=${JSON.stringify(data)}; expires=Fri, 31 Dec 9999 23:59:59 GMT; path=/`;
@@ -166,6 +171,7 @@ class BananaTimer {
                     this.timeLeft = data.timeLeft || 950400;
                     this.isRunning = data.isRunning || false;
                     this.currentStage = data.currentStage || 1;
+                    this.startingStage = data.startingStage || 1;
                     this.startTime = data.startTime || null;
                     this.loadedFromCookies = true;
                     
@@ -173,6 +179,7 @@ class BananaTimer {
                         timeLeft: this.timeLeft,
                         isRunning: this.isRunning,
                         currentStage: this.currentStage,
+                        startingStage: this.startingStage,
                         startTime: this.startTime
                     }); // Debug log
                     
@@ -180,7 +187,9 @@ class BananaTimer {
                     if (this.isRunning && this.startTime) {
                         const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
                         console.log('Elapsed time:', elapsed, 'seconds'); // Debug log
-                        this.timeLeft = Math.max(0, this.timeLeft - elapsed);
+                        // In debug mode, elapsed time counts as hours instead of seconds
+                        const adjustedElapsed = this.debugMode ? elapsed * 3600 : elapsed;
+                        this.timeLeft = Math.max(0, this.timeLeft - adjustedElapsed);
                         
                         if (this.timeLeft <= 0) {
                             console.log('Timer expired while away'); // Debug log
@@ -222,7 +231,9 @@ class BananaTimer {
             document.body.classList.add('banana-only-mode');
             
             this.interval = setInterval(() => {
-                this.timeLeft--;
+                // In debug mode, 1 second = 1 hour (3600 seconds)
+                const timeDecrement = this.debugMode ? 3600 : 1;
+                this.timeLeft -= timeDecrement;
                 this.updateTimerDisplay();
                 this.updateBananaColor(this.getBrowningPercentage());
                 this.saveToCookies();
@@ -245,6 +256,16 @@ class BananaTimer {
         } else {
             this.timer.textContent = `${minutes}m`;
         }
+        
+        // Debug info (remove this later if desired)
+        if (this.startTime) {
+            const totalDuration = (11 - this.startingStage) * 24 * 60 * 60;
+            const timeElapsed = totalDuration - this.timeLeft;
+            const daysElapsed = Math.floor(timeElapsed / (24 * 60 * 60));
+            console.log(`Current stage: ${this.currentStage}, Starting stage: ${this.startingStage}, Days elapsed: ${daysElapsed}, Time left: ${this.timeLeft}s (${days}d ${hours}h ${minutes}m)`);
+        } else {
+            console.log(`Current stage: ${this.currentStage}, Starting stage: ${this.startingStage}, Time left: ${this.timeLeft}s (${days}d ${hours}h ${minutes}m) - Timer not started`);
+        }
     }
 
     updateThumbnailSelection() {
@@ -256,6 +277,7 @@ class BananaTimer {
 
     setStage(stage) {
         this.currentStage = stage;
+        this.startingStage = stage; // Remember the stage the user selected
         // Set timer based on stage - each stage represents 1 day less
         // Stage 1 = 11 days, Stage 2 = 10 days, ..., Stage 11 = 0 days
         const daysLeft = 11 - stage;
@@ -277,8 +299,11 @@ class BananaTimer {
     }
 
     getBrowningPercentage() {
-        // Calculate percentage based on 11 days total
-        return Math.floor(((950400 - this.timeLeft) / 950400) * 100);
+        // Calculate percentage based on the actual timer duration for the selected starting stage
+        const totalDuration = (11 - this.startingStage) * 24 * 60 * 60; // Total seconds for this banana's journey
+        const initialTimeLeft = totalDuration; // What the timeLeft was when timer started
+        const timeElapsed = initialTimeLeft - this.timeLeft; // How much time has passed
+        return totalDuration > 0 ? Math.floor((timeElapsed / totalDuration) * 100) : 100;
     }
     
     showBananaStage(stage) {
@@ -301,7 +326,9 @@ class BananaTimer {
         document.body.classList.add('banana-only-mode');
         
         this.interval = setInterval(() => {
-            this.timeLeft--;
+            // In debug mode, 1 second = 1 hour (3600 seconds)
+            const timeDecrement = this.debugMode ? 3600 : 1;
+            this.timeLeft -= timeDecrement;
             this.updateTimerDisplay();
             this.updateBananaColor(this.getBrowningPercentage());
             this.saveToCookies();
@@ -314,19 +341,24 @@ class BananaTimer {
     }
     
     updateBananaColor(percentage) {
-        // Calculate which stage to show (1-11) based on days elapsed
-        // Each stage represents approximately 9.09% of the total time (100% / 11 stages)
-        let stage = 1;
-        if (percentage >= 9.09) stage = 2;
-        if (percentage >= 18.18) stage = 3;
-        if (percentage >= 27.27) stage = 4;
-        if (percentage >= 36.36) stage = 5;
-        if (percentage >= 45.45) stage = 6;
-        if (percentage >= 54.54) stage = 7;
-        if (percentage >= 63.63) stage = 8;
-        if (percentage >= 72.72) stage = 9;
-        if (percentage >= 81.81) stage = 10;
-        if (percentage >= 90.90) stage = 11;
+        // Calculate which stage to show based on time elapsed from the timer countdown
+        // Each stage represents exactly 1 day (24 hours)
+        
+        if (!this.startTime) {
+            // Timer hasn't started yet, stay at the selected stage
+            return;
+        }
+        
+        // Calculate how much time has elapsed based on the timer countdown
+        const totalDuration = (11 - this.startingStage) * 24 * 60 * 60; // Total seconds for this banana's journey
+        const timeElapsed = totalDuration - this.timeLeft; // How much time has passed according to the timer
+        
+        // Calculate days elapsed based on the timer countdown (not real time)
+        const daysElapsed = Math.floor(timeElapsed / (24 * 60 * 60)); // Each day = 86400 seconds
+        
+        // Stage is the starting stage plus days elapsed
+        // For example: if user selected stage 3 and 2 days elapsed, current stage = 3 + 2 = 5
+        let stage = Math.min(this.startingStage + daysElapsed, 11); // Cap at stage 11
         
         // Update current stage
         this.currentStage = stage;
