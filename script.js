@@ -40,12 +40,14 @@ class BananaTimer {
         
         this.banana.addEventListener('touchstart', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             touchStartTime = Date.now();
             this.startHold();
         });
         
         this.banana.addEventListener('touchend', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             const touchDuration = Date.now() - touchStartTime;
             
             this.stopHold();
@@ -59,6 +61,7 @@ class BananaTimer {
         // Handle touch cancel (when user drags finger away)
         this.banana.addEventListener('touchcancel', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             this.stopHold();
         });
         
@@ -74,6 +77,26 @@ class BananaTimer {
                 const stage = parseInt(thumb.getAttribute('data-stage'));
                 this.setStage(stage);
             });
+        });
+        
+        // Help button functionality
+        this.helpButton = document.getElementById('helpButton');
+        this.helpPopup = document.getElementById('helpPopup');
+        
+        this.helpButton.addEventListener('click', () => {
+            this.showHelpPopup();
+        });
+        
+        // Close popup when clicking anywhere on the popup
+        this.helpPopup.addEventListener('click', () => {
+            this.hideHelpPopup();
+        });
+        
+        // Close popup with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.helpPopup.classList.contains('show')) {
+                this.hideHelpPopup();
+            }
         });
         
         // Only set stage to 1 if we didn't load from cookies
@@ -328,6 +351,16 @@ class BananaTimer {
         // Remove the banana-only-mode class to show all elements again
         document.body.classList.remove('banana-only-mode');
         this.saveToCookies();
+    }
+
+    showHelpPopup() {
+        this.helpPopup.classList.add('show');
+        document.body.style.overflow = 'hidden'; // Prevent scrolling
+    }
+
+    hideHelpPopup() {
+        this.helpPopup.classList.remove('show');
+        document.body.style.overflow = ''; // Restore scrolling
     }
 }
 
