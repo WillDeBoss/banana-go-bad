@@ -12,18 +12,20 @@ class BananaTimer {
         this.startTime = null;
         this.holdTimer = null;
         this.isHolding = false;
-        this.justReset = false; // Flag to prevent immediate click after reset
+        this.holdStartTime = null; // Track when hold started
         
         this.loadFromCookies(); // Load first before init
         this.init();
     }
     
     init() {
-        this.banana.addEventListener('click', () => {
-            // Prevent click if we just completed a reset
-            if (this.justReset) {
-                this.justReset = false;
-                return;
+        this.banana.addEventListener('click', (e) => {
+            // Prevent click if we just completed a long hold (potential reset)
+            if (this.holdStartTime) {
+                const holdDuration = Date.now() - this.holdStartTime;
+                if (holdDuration > 1000) { // If held for more than 1 second, ignore the click
+                    return;
+                }
             }
             this.startTimer();
         });
@@ -83,6 +85,7 @@ class BananaTimer {
     startHold() {
         if (!this.isRunning) return; // Only allow reset when timer is running
         this.isHolding = true;
+        this.holdStartTime = Date.now(); // Record when hold started
         this.holdTimer = setTimeout(() => {
             this.resetToSelection();
         }, 5000); // 5 seconds
@@ -94,13 +97,17 @@ class BananaTimer {
             clearTimeout(this.holdTimer);
             this.holdTimer = null;
         }
+        
+        // Clear hold start time after a small delay to allow click event to check it
+        setTimeout(() => {
+            this.holdStartTime = null;
+        }, 100);
     }
 
     resetToSelection() {
         this.stopTimer();
         this.setStage(1); // Reset to first stage
         this.saveToCookies();
-        this.justReset = true; // Set flag to prevent immediate click
     }
 
     saveToCookies() {
