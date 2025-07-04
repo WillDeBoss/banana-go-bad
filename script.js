@@ -71,6 +71,10 @@ class BananaTimer {
         
         this.thumbs.forEach(thumb => {
             thumb.addEventListener('click', (e) => {
+                // Prevent changing banana selection when timer is running
+                if (this.isRunning) {
+                    return;
+                }
                 const stage = parseInt(thumb.getAttribute('data-stage'));
                 this.setStage(stage);
             });
@@ -78,6 +82,10 @@ class BananaTimer {
             // Add touch support for thumbnails too
             thumb.addEventListener('touchend', (e) => {
                 e.preventDefault();
+                // Prevent changing banana selection when timer is running
+                if (this.isRunning) {
+                    return;
+                }
                 const stage = parseInt(thumb.getAttribute('data-stage'));
                 this.setStage(stage);
             });
