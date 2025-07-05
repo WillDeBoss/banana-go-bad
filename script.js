@@ -11,6 +11,7 @@ class BananaTimer {
         this.currentStage = 1;
         this.startingStage = 1; // Track the stage the user originally selected
         this.startTime = null;
+        this.realStartDate = null; // Track the actual calendar date when timer started
         this.holdTimer = null;
         this.isHolding = false;
         this.holdStartTime = null; // Track when hold started
@@ -142,6 +143,7 @@ class BananaTimer {
     resetToSelection() {
         this.stopTimer();
         this.setStage(1); // Reset to first stage (this will also set startingStage = 1)
+        this.realStartDate = null; // Reset the real start date
         this.saveToCookies();
     }
 
@@ -151,7 +153,8 @@ class BananaTimer {
             isRunning: this.isRunning,
             currentStage: this.currentStage,
             startingStage: this.startingStage,
-            startTime: this.startTime
+            startTime: this.startTime,
+            realStartDate: this.realStartDate // Save the real start date
         };
         document.cookie = `bananaTimer=${JSON.stringify(data)}; expires=Fri, 31 Dec 9999 23:59:59 GMT; path=/`;
         console.log('Saved to cookies:', data); // Debug log
@@ -181,6 +184,7 @@ class BananaTimer {
                     this.currentStage = data.currentStage || 1;
                     this.startingStage = data.startingStage || 1;
                     this.startTime = data.startTime || null;
+                    this.realStartDate = data.realStartDate || null;
                     this.loadedFromCookies = true;
                     
                     console.log('Loaded state:', {
@@ -188,23 +192,38 @@ class BananaTimer {
                         isRunning: this.isRunning,
                         currentStage: this.currentStage,
                         startingStage: this.startingStage,
-                        startTime: this.startTime
+                        startTime: this.startTime,
+                        realStartDate: this.realStartDate
                     }); // Debug log
                     
-                    // If timer was running, calculate elapsed time and continue
-                    if (this.isRunning && this.startTime) {
-                        const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
-                        console.log('Elapsed time:', elapsed, 'seconds'); // Debug log
-                        // In debug mode, elapsed time counts as hours instead of seconds
-                        const adjustedElapsed = this.debugMode ? elapsed * 3600 : elapsed;
-                        this.timeLeft = Math.max(0, this.timeLeft - adjustedElapsed);
+                    // If timer was running, calculate the current stage based on real time
+                    if (this.isRunning && this.realStartDate) {
+                        const currentStage = this.calculateCurrentStageFromRealTime();
+                        this.currentStage = currentStage;
+                        
+                        // Calculate remaining time based on real time
+                        const realDaysElapsed = Math.floor((Date.now() - this.realStartDate) / (24 * 60 * 60 * 1000));
+                        const totalDays = 11 - this.startingStage;
+                        const remainingDays = Math.max(0, totalDays - realDaysElapsed);
+                        
+                        // Calculate time left in the current day
+                        const startOfDay = new Date(this.realStartDate);
+                        startOfDay.setHours(0, 0, 0, 0);
+                        const currentTime = new Date();
+                        const currentStartOfDay = new Date(currentTime);
+                        currentStartOfDay.setHours(0, 0, 0, 0);
+                        
+                        const msInCurrentDay = currentTime - currentStartOfDay;
+                        const msLeftInCurrentDay = (24 * 60 * 60 * 1000) - msInCurrentDay;
+                        
+                        this.timeLeft = (remainingDays * 24 * 60 * 60) + Math.floor(msLeftInCurrentDay / 1000);
                         
                         if (this.timeLeft <= 0) {
                             console.log('Timer expired while away'); // Debug log
                             this.timeLeft = 0;
                             this.isRunning = false;
                             this.startTime = null;
-                            // Update to final stage
+                            this.realStartDate = null;
                             this.currentStage = 11;
                         } else {
                             console.log('Continuing timer with', this.timeLeft, 'seconds left'); // Debug log
@@ -232,6 +251,23 @@ class BananaTimer {
         }
     }
 
+    calculateCurrentStageFromRealTime() {
+        if (!this.realStartDate) {
+            return this.startingStage;
+        }
+        
+        const now = Date.now();
+        const daysSinceStart = Math.floor((now - this.realStartDate) / (24 * 60 * 60 * 1000));
+        
+        // In debug mode, use hours instead of days
+        if (this.debugMode) {
+            const hoursSinceStart = Math.floor((now - this.realStartDate) / (60 * 60 * 1000));
+            return Math.min(this.startingStage + hoursSinceStart, 11);
+        }
+        
+        return Math.min(this.startingStage + daysSinceStart, 11);
+    }
+
     continueTimer() {
         // Continue an existing timer without resetting startTime
         if (this.isRunning && this.timeLeft > 0) {
@@ -239,16 +275,41 @@ class BananaTimer {
             document.body.classList.add('banana-only-mode');
             
             this.interval = setInterval(() => {
-                // In debug mode, 1 second = 1 hour (3600 seconds)
-                const timeDecrement = this.debugMode ? 3600 : 1;
-                this.timeLeft -= timeDecrement;
-                this.updateTimerDisplay();
-                this.updateBananaColor(this.getBrowningPercentage());
+                // Update current stage based on real time
+                const newStage = this.calculateCurrentStageFromRealTime();
+                if (newStage !== this.currentStage) {
+                    this.currentStage = newStage;
+                    this.showBananaStage(this.currentStage);
+                    this.updateThumbnailSelection();
+                }
+                
+                // Update timer display
+                this.updateTimerFromRealTime();
                 this.saveToCookies();
+                
                 if (this.timeLeft <= 0) {
                     this.stopTimer();
                 }
             }, 1000);
+        }
+    }
+
+    updateTimerFromRealTime() {
+        if (!this.realStartDate) {
+            return;
+        }
+        
+        const now = Date.now();
+        const totalDays = 11 - this.startingStage;
+        const endDate = this.realStartDate + (totalDays * 24 * 60 * 60 * 1000);
+        
+        if (this.debugMode) {
+            // In debug mode, use hours instead of days
+            const totalHours = totalDays * 24;
+            const endDateDebug = this.realStartDate + (totalHours * 60 * 60 * 1000);
+            this.timeLeft = Math.max(0, Math.floor((endDateDebug - now) / 1000));
+        } else {
+            this.timeLeft = Math.max(0, Math.floor((endDate - now) / 1000));
         }
     }
 
@@ -329,17 +390,24 @@ class BananaTimer {
         if (this.isRunning) return;
         this.isRunning = true;
         this.startTime = Date.now();
+        this.realStartDate = Date.now(); // Set the real start date
         
         // Add fade-away effect to everything except banana
         document.body.classList.add('banana-only-mode');
         
         this.interval = setInterval(() => {
-            // In debug mode, 1 second = 1 hour (3600 seconds)
-            const timeDecrement = this.debugMode ? 3600 : 1;
-            this.timeLeft -= timeDecrement;
-            this.updateTimerDisplay();
-            this.updateBananaColor(this.getBrowningPercentage());
+            // Update current stage based on real time
+            const newStage = this.calculateCurrentStageFromRealTime();
+            if (newStage !== this.currentStage) {
+                this.currentStage = newStage;
+                this.showBananaStage(this.currentStage);
+                this.updateThumbnailSelection();
+            }
+            
+            // Update timer display based on real time
+            this.updateTimerFromRealTime();
             this.saveToCookies();
+            
             if (this.timeLeft <= 0) {
                 this.stopTimer();
             }
@@ -349,44 +417,16 @@ class BananaTimer {
     }
     
     updateBananaColor(percentage) {
-        // Calculate which stage to show based on time elapsed from the timer countdown
-        // Each stage represents exactly 1 day (24 hours)
-        
-        if (!this.startTime) {
-            // Timer hasn't started yet, stay at the selected stage
-            return;
-        }
-        
-        // Calculate how much time has elapsed based on the timer countdown
-        const totalDuration = (11 - this.startingStage) * 24 * 60 * 60; // Total seconds for this banana's journey
-        const timeElapsed = totalDuration - this.timeLeft; // How much time has passed according to the timer
-        
-        // Calculate days elapsed based on the timer countdown (not real time)
-        const daysElapsed = Math.floor(timeElapsed / (24 * 60 * 60)); // Each day = 86400 seconds
-        
-        // Stage is the starting stage plus days elapsed
-        // For example: if user selected stage 3 and 2 days elapsed, current stage = 3 + 2 = 5
-        let stage = Math.min(this.startingStage + daysElapsed, 11); // Cap at stage 11
-        
-        // Update current stage
-        this.currentStage = stage;
-        
-        // Hide all images
-        const images = this.banana.querySelectorAll('.banana-image');
-        images.forEach(img => img.classList.remove('active'));
-        // Show the appropriate stage
-        const activeImage = this.banana.querySelector(`[data-stage="${stage}"]`);
-        if (activeImage) {
-            activeImage.classList.add('active');
-        }
-        // Also update selector highlight
-        this.updateThumbnailSelection();
+        // This method is no longer needed since we calculate stage from real time
+        // Keep it for compatibility but don't use it
+        return;
     }
     
     stopTimer() {
         clearInterval(this.interval);
         this.isRunning = false;
         this.startTime = null;
+        this.realStartDate = null;
         
         // Remove the banana-only-mode class to show all elements again
         document.body.classList.remove('banana-only-mode');
